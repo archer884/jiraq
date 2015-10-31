@@ -1,0 +1,8 @@
+[package]
+authors = ["J/A <archer884@gmail.com>"]
+name = "jiraq"
+version = "0.1.0"
+
+[dependencies]
+hyper = "0.6.15"
+serde = "0.6.1"
