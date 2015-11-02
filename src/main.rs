@@ -17,7 +17,6 @@ extern crate toml;
 
 use hyper::Client;
 use hyper::header::{ Authorization, Basic };
-use hyper::status::StatusCode;
 
 mod command;
 mod config;
@@ -26,15 +25,6 @@ mod reports;
 
 use json::StorySummary;
 use reports::Report;
-
-#[derive(Debug)]
-struct JsonResponse(StatusCode, String);
-
-impl JsonResponse {
-    fn body(&self) -> &str {
-        &self.1
-    }
-}
 
 fn main() {
     let config = match config::read_config(command::read_command()) {
@@ -49,21 +39,22 @@ fn main() {
     });
 
     match &config.report()[..] {
-        "existing-stories" => match config.params().and_then(|p| p.parse().ok()) {
+        // All this should be handled by clap subcommands
+        "existing" => match config.params().and_then(|p| p.parse().ok()) {
             None => panic!("valid month param not provided"),
-            Some(month) => print_report(&client, &header, reports::stories::existing(month)),
+            Some(month) => print_report(&client, &header, reports::existing(month)),
         },
-        "created-stories" => match config.params().and_then(|p| p.parse().ok()) {
+        "created" => match config.params().and_then(|p| p.parse().ok()) {
             None => panic!("valid month param not provided"),
-            Some(month) => print_report(&client, &header, reports::stories::created(month)),
+            Some(month) => print_report(&client, &header, reports::created(month)),
         },
-        "closed-stories" => match config.params().and_then(|p| p.parse().ok()) {
+        "closed" => match config.params().and_then(|p| p.parse().ok()) {
             None => panic!("valid month param not provided"),
-            Some(month) => print_report(&client, &header, reports::stories::closed(month))
+            Some(month) => print_report(&client, &header, reports::closed(month))
         },
-        "remaining-stories" => match config.params().and_then(|p| p.parse().ok()) {
+        "remaining" => match config.params().and_then(|p| p.parse().ok()) {
             None => panic!("valid month param not provided"),
-            Some(month) => print_report(&client, &header, reports::stories::remaining(month))
+            Some(month) => print_report(&client, &header, reports::remaining(month))
         },
         _ => println!("unknown report"),
     }
@@ -72,13 +63,10 @@ fn main() {
 fn print_report(client: &Client, auth: &Authorization<Basic>, report: Report) {
     let report = report.run(client, auth);
 
-    // here we kind of assume the user wants story reports; this tool is getting more specialized
-    let story_summaries: Vec<_> = report.iter().map(|response|
-        serde_json::from_str::<StorySummary>(response.body()).unwrap()
-    ).collect();
-
-    for row in story_summaries.chunks(2) {
-        println!("{},{}", row[0].total(), row[1].total());
+    for row in report.chunks(2) {
+        println!("{},{}",
+            row[0].to::<StorySummary>().unwrap().total(),
+            row[1].to::<StorySummary>().unwrap().total());
     }
 }
 
@@ -90,13 +78,21 @@ fn get_password() -> String {
 
 #[cfg(test)]
 mod tests {
-    use json::StorySummary;
+    use hyper::status::StatusCode;
+    use json::{ JsonResponse, StorySummary};
     use serde_json;
+
+    const JSON_CONTENT: &'static str = r#"{"startAt":0,"maxResults":0,"total":0,"issues":[]}"#;
 
     #[test]
     fn can_deserialize() {
-        let json = r#"{"startAt":0,"maxResults":0,"total":0,"issues":[]}"#;
+        assert!(0 == serde_json::from_str::<StorySummary>(JSON_CONTENT).unwrap().total());
+    }
 
-        assert!(0 == serde_json::from_str::<StorySummary>(json).unwrap().total());
+    #[test]
+    fn can_deserialize_JsonResponse() {
+        let json_response = JsonResponse::new(StatusCode::Ok, JSON_CONTENT.to_owned());
+
+        assert!(0 == json_response.to::<StorySummary>().unwrap().total());
     }
 }
