@@ -1,19 +1,30 @@
+// These features mean that this code is no longer buildable on anything other than nightly. I
+// don't personally see this as a big deal because I don't use anything else, but on the up side we
+// could salvage this by implementing the `Deserialize` trait by hand. So far, the struct has only
+// one field, and that wouldn't be a big deal. It's just faster this way because I've never done it
+// the other way. Except, you know... the dependency on `aster` takes around a month to compile.
+#![feature(custom_attribute, custom_derive, plugin)]
+#![plugin(serde_macros)]
+
 extern crate clap;
 extern crate hyper;
 extern crate regex;
 extern crate rpassword;
 extern crate rustc_serialize;
+extern crate serde_json;
+extern crate serde;
 extern crate toml;
 
 use hyper::Client;
-use hyper::status::StatusCode;
 use hyper::header::{ Authorization, Basic };
-use regex::Regex;
+use hyper::status::StatusCode;
 
 mod command;
 mod config;
+mod json;
 mod reports;
 
+use json::StorySummary;
 use reports::Report;
 
 #[derive(Debug)]
@@ -22,16 +33,6 @@ struct JsonResponse(StatusCode, String);
 impl JsonResponse {
     fn body(&self) -> &str {
         &self.1
-    }
-
-    fn total(&self) -> i32 {
-        let pattern = Regex::new(r#"("total":)(\d+)"#).unwrap(); // surely this is fine >.>
-        match pattern.captures(self.body()) {
-            None => panic!("bad response: {}", self.body()),
-            Some(captures) => captures.iter().nth(2).and_then(|capture|
-                capture.and_then(|n| n.parse().ok())
-            ).unwrap_or_else(|| panic!("failed to parse: {}", self.body()))
-        }
     }
 }
 
@@ -70,7 +71,13 @@ fn main() {
 
 fn print_report(client: &Client, auth: &Authorization<Basic>, report: Report) {
     let report = report.run(client, auth);
-    for row in report.chunks(2) {
+
+    // here we kind of assume the user wants story reports; this tool is getting more specialized
+    let story_summaries: Vec<_> = report.iter().map(|response|
+        serde_json::from_str::<StorySummary>(response.body()).unwrap()
+    ).collect();
+
+    for row in story_summaries.chunks(2) {
         println!("{},{}", row[0].total(), row[1].total());
     }
 }
@@ -79,4 +86,17 @@ fn print_report(client: &Client, auth: &Authorization<Basic>, report: Report) {
 fn get_password() -> String {
     println!("Enter password: ");
     rpassword::read_password().unwrap()
+}
+
+#[cfg(test)]
+mod tests {
+    use json::StorySummary;
+    use serde_json;
+
+    #[test]
+    fn can_deserialize() {
+        let json = r#"{"startAt":0,"maxResults":0,"total":0,"issues":[]}"#;
+
+        assert!(0 == serde_json::from_str::<StorySummary>(json).unwrap().total());
+    }
 }
