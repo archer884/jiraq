@@ -3,6 +3,7 @@ use clap::{ Arg, App };
 pub struct Command {
     pub with_password: bool,
     pub report: String,
+    pub params: Option<String>,
 }
 
 pub fn read_command() -> Command {
@@ -14,6 +15,9 @@ pub fn read_command() -> Command {
             .help("sets the report to run")
             .required(true)
             .index(1))
+        .arg(Arg::with_name("PARAMS")
+            .help("optional report parameters")
+            .index(2))
         .arg(Arg::with_name("password")
             .short("p")
             .help("accept password from std in"))
@@ -22,5 +26,6 @@ pub fn read_command() -> Command {
     Command {
         with_password: matches.is_present("password"),
         report: matches.value_of("REPORT").unwrap().to_owned(),
+        params: matches.value_of("PARAMS").map(|params| params.to_owned()),
     }
 }

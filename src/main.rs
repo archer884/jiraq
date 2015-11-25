@@ -1,5 +1,6 @@
 extern crate clap;
 extern crate hyper;
+extern crate regex;
 extern crate rpassword;
 extern crate rustc_serialize;
 extern crate toml;
@@ -7,6 +8,7 @@ extern crate toml;
 use hyper::Client;
 use hyper::status::StatusCode;
 use hyper::header::{ Authorization, Basic };
+use regex::Regex;
 
 mod command;
 mod config;
@@ -14,24 +16,28 @@ mod reports;
 
 use reports::Report;
 
+#[derive(Debug)]
 struct JsonResponse(StatusCode, String);
 
 impl JsonResponse {
-    fn status(&self) -> StatusCode {
-        self.0
-    }
-
     fn body(&self) -> &str {
         &self.1
+    }
+
+    fn total(&self) -> i32 {
+        let pattern = Regex::new(r#"("total":)(\d+)"#).unwrap(); // surely this is fine >.>
+        match pattern.captures(self.body()) {
+            None => panic!("bad response: {}", self.body()),
+            Some(captures) => captures.iter().nth(2).and_then(|capture|
+                capture.and_then(|n| n.parse().ok())
+            ).unwrap_or_else(|| panic!("failed to parse: {}", self.body()))
+        }
     }
 }
 
 fn main() {
-    let config = match config::read_config(&command::read_command()) {
-        Err(e) => {
-            println!("{:?}", e);
-            std::process::exit(1);
-        },
+    let config = match config::read_config(command::read_command()) {
+        Err(e) => panic!("bad config: {:?}", e),
         Ok(config) => config,
     };
 
@@ -42,19 +48,30 @@ fn main() {
     });
 
     match &config.report()[..] {
-        "stories" => {
-            story_print_opening_balances(&client, &header);
-            story_print_stories_added(&client, &header);
-            story_print_stories_completed(&client, &header);
-            story_print_closing_balance(&client, &header);
+        "existing-stories" => match config.params().and_then(|p| p.parse().ok()) {
+            None => panic!("valid month param not provided"),
+            Some(month) => print_report(&client, &header, reports::stories::existing(month)),
         },
-        "bugs" => {
-            bug_print_opening_balances(&client, &header);
-            bug_print_bugs_added(&client, &header);
-            bug_print_bugs_completed(&client, &header);
-            bug_print_closing_balance(&client, &header);
-        }
+        "created-stories" => match config.params().and_then(|p| p.parse().ok()) {
+            None => panic!("valid month param not provided"),
+            Some(month) => print_report(&client, &header, reports::stories::created(month)),
+        },
+        "closed-stories" => match config.params().and_then(|p| p.parse().ok()) {
+            None => panic!("valid month param not provided"),
+            Some(month) => print_report(&client, &header, reports::stories::closed(month))
+        },
+        "remaining-stories" => match config.params().and_then(|p| p.parse().ok()) {
+            None => panic!("valid month param not provided"),
+            Some(month) => print_report(&client, &header, reports::stories::remaining(month))
+        },
         _ => println!("unknown report"),
+    }
+}
+
+fn print_report(client: &Client, auth: &Authorization<Basic>, report: Report) {
+    let report = report.run(client, auth);
+    for row in report.chunks(2) {
+        println!("{},{}", row[0].total(), row[1].total());
     }
 }
 
@@ -62,67 +79,4 @@ fn main() {
 fn get_password() -> String {
     println!("Enter password: ");
     rpassword::read_password().unwrap()
-}
-
-fn story_print_opening_balances(client: &Client, auth: &Authorization<Basic>) {
-    println!("Opening balances: ");
-    print_report("Current Month", &reports::stories::opening_balance_current_month(), client, auth);
-    print_report("Prior One", &reports::stories::opening_balance_prior_month_one(), client, auth);
-    print_report("Prior Two", &reports::stories::opening_balance_prior_month_two(), client, auth);
-}
-
-fn story_print_stories_added(client: &Client, auth: &Authorization<Basic>) {
-    println!("Stories added: ");
-    print_report("Current Month", &reports::stories::created_current_month(), client, auth);
-    print_report("Prior One", &reports::stories::created_prior_month_one(), client, auth);
-    print_report("Prior Two", &reports::stories::created_prior_month_two(), client, auth);
-}
-
-fn story_print_stories_completed(client: &Client, auth: &Authorization<Basic>) {
-    println!("Stories completed: ");
-    print_report("Current Month", &reports::stories::closed_current_month(), client, auth);
-    print_report("Prior One", &reports::stories::closed_prior_month_one(), client, auth);
-    print_report("Prior Two", &reports::stories::closed_prior_month_two(), client, auth);
-}
-
-fn story_print_closing_balance(client: &Client, auth: &Authorization<Basic>) {
-    println!("Closing balances: ");
-    print_report("Current Month", &reports::stories::closing_balance_current_month(), client, auth);
-    print_report("Prior One", &reports::stories::closing_balance_prior_month_one(), client, auth);
-    print_report("Prior Two", &reports::stories::closing_balance_prior_month_two(), client, auth);
-}
-
-fn bug_print_opening_balances(client: &Client, auth: &Authorization<Basic>) {
-    println!("Opening balances: ");
-    print_report("Current Month", &reports::bugs::opening_balance_current_month(), client, auth);
-    print_report("Prior One", &reports::bugs::opening_balance_prior_month_one(), client, auth);
-    print_report("Prior Two", &reports::bugs::opening_balance_prior_month_two(), client, auth);
-}
-
-fn bug_print_bugs_added(client: &Client, auth: &Authorization<Basic>) {
-    println!("bugs added: ");
-    print_report("Current Month", &reports::bugs::created_current_month(), client, auth);
-    print_report("Prior One", &reports::bugs::created_prior_month_one(), client, auth);
-    print_report("Prior Two", &reports::bugs::created_prior_month_two(), client, auth);
-}
-
-fn bug_print_bugs_completed(client: &Client, auth: &Authorization<Basic>) {
-    println!("bugs completed: ");
-    print_report("Current Month", &reports::bugs::closed_current_month(), client, auth);
-    print_report("Prior One", &reports::bugs::closed_prior_month_one(), client, auth);
-    print_report("Prior Two", &reports::bugs::closed_prior_month_two(), client, auth);
-}
-
-fn bug_print_closing_balance(client: &Client, auth: &Authorization<Basic>) {
-    println!("Closing balances: ");
-    print_report("Current Month", &reports::bugs::closing_balance_current_month(), client, auth);
-    print_report("Prior One", &reports::bugs::closing_balance_prior_month_one(), client, auth);
-    print_report("Prior Two", &reports::bugs::closing_balance_prior_month_two(), client, auth);
-}
-
-fn print_report(message: &str, report: &Report, client: &Client, auth: &Authorization<Basic>) {
-    println!("{}", message);
-    for result in &report.run(client, auth) {
-        println!("{:?}: {}", result.status(), result.body());
-    }
 }
