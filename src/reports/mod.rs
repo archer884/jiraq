@@ -7,6 +7,8 @@ use hyper::header::{ Authorization, Basic };
 use super::JsonResponse;
 
 pub mod stories;
+
+#[allow(unused)]
 pub mod bugs;
 
 const URL_BASE: &'static str = "https://magdevelopment.atlassian.net/rest/api/2/search?maxResults=0&";

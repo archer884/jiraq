@@ -1,142 +1,99 @@
+use std::fmt;
 use super::Report;
 
-// opening balances
-
-pub fn opening_balance_current_month() -> Report {
-    Report(vec![
-        "jql=project=webops and issuetype=story and created <= startofmonth() and priority=high and (resolved >= startofmonth() or resolved = null) and labels = jpc".to_owned(),
-        "jql=project=webops and issuetype=story and created <= startofmonth() and priority=high and (resolved >= startofmonth() or resolved = null) and labels = mss".to_owned(),
-        "jql=project=webops and issuetype=story and created <= startofmonth() and priority=medium and (resolved >= startofmonth() or resolved = null) and labels = jpc".to_owned(),
-        "jql=project=webops and issuetype=story and created <= startofmonth() and priority=medium and (resolved >= startofmonth() or resolved = null) and labels = mss".to_owned(),
-        "jql=project=webops and issuetype=story and created <= startofmonth() and priority=low and (resolved >= startofmonth() or resolved = null) and labels = jpc".to_owned(),
-        "jql=project=webops and issuetype=story and created <= startofmonth() and priority=low and (resolved >= startofmonth() or resolved = null) and labels = mss".to_owned(),
-    ])
+#[derive(Debug, Copy, Clone)]
+enum Priority {
+    High,
+    Medium,
+    Low,
 }
 
-pub fn opening_balance_prior_month_one() -> Report {
-    Report(vec![
-        "jql=project=webops and issuetype=story and created <= startofmonth(-1) and priority=high and (resolved >= startofmonth(-1) or resolved = null) and labels = jpc".to_owned(),
-        "jql=project=webops and issuetype=story and created <= startofmonth(-1) and priority=high and (resolved >= startofmonth(-1) or resolved = null) and labels = mss".to_owned(),
-        "jql=project=webops and issuetype=story and created <= startofmonth(-1) and priority=medium and (resolved >= startofmonth(-1) or resolved = null) and labels = jpc".to_owned(),
-        "jql=project=webops and issuetype=story and created <= startofmonth(-1) and priority=medium and (resolved >= startofmonth(-1) or resolved = null) and labels = mss".to_owned(),
-        "jql=project=webops and issuetype=story and created <= startofmonth(-1) and priority=low and (resolved >= startofmonth(-1) or resolved = null) and labels = jpc".to_owned(),
-        "jql=project=webops and issuetype=story and created <= startofmonth(-1) and priority=low and (resolved >= startofmonth(-1) or resolved = null) and labels = mss".to_owned(),
-    ])
+static PRIORITIES: [Priority; 3] = [
+    Priority::High,
+    Priority::Medium,
+    Priority::Low,
+];
+
+impl fmt::Display for Priority {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            &Priority::High => write!(f, "high"),
+            &Priority::Medium => write!(f, "medium"),
+            &Priority::Low => write!(f, "low"),
+        }
+    }
 }
 
-pub fn opening_balance_prior_month_two() -> Report {
-    Report(vec![
-        "jql=project=webops and issuetype=story and created <= startofmonth(-2) and priority=high and (resolved >= startofmonth(-2) or resolved = null) and labels = jpc".to_owned(),
-        "jql=project=webops and issuetype=story and created <= startofmonth(-2) and priority=high and (resolved >= startofmonth(-2) or resolved = null) and labels = mss".to_owned(),
-        "jql=project=webops and issuetype=story and created <= startofmonth(-2) and priority=medium and (resolved >= startofmonth(-2) or resolved = null) and labels = jpc".to_owned(),
-        "jql=project=webops and issuetype=story and created <= startofmonth(-2) and priority=medium and (resolved >= startofmonth(-2) or resolved = null) and labels = mss".to_owned(),
-        "jql=project=webops and issuetype=story and created <= startofmonth(-2) and priority=low and (resolved >= startofmonth(-2) or resolved = null) and labels = jpc".to_owned(),
-        "jql=project=webops and issuetype=story and created <= startofmonth(-2) and priority=low and (resolved >= startofmonth(-2) or resolved = null) and labels = mss".to_owned(),
-    ])
+#[derive(Debug, Copy, Clone)]
+enum Site {
+    Mss,
+    Jpc,
 }
 
+static SITES: [Site; 2] = [ Site::Jpc, Site::Mss ];
 
-// Created in month
-
-pub fn created_current_month() -> Report {
-    Report(vec![
-        "jql=project = WEBOPS AND issuetype = Story AND priority = High AND created >= startOfMonth() AND created <= endOfMonth() AND resolved = NULL AND labels = JPC".to_owned(),
-        "jql=project = WEBOPS AND issuetype = Story AND priority = High AND created >= startOfMonth() AND created <= endOfMonth() AND resolved = NULL AND labels = MSS".to_owned(),
-        "jql=project = WEBOPS AND issuetype = Story AND priority = Medium AND created >= startOfMonth() AND created <= endOfMonth() AND resolved = NULL AND labels = JPC".to_owned(),
-        "jql=project = WEBOPS AND issuetype = Story AND priority = Medium AND created >= startOfMonth() AND created <= endOfMonth() AND resolved = NULL AND labels = MSS".to_owned(),
-        "jql=project = WEBOPS AND issuetype = Story AND priority = Low AND created >= startOfMonth() AND created <= endOfMonth() AND resolved = NULL AND labels = JPC".to_owned(),
-        "jql=project = WEBOPS AND issuetype = Story AND priority = Low AND created >= startOfMonth() AND created <= endOfMonth() AND resolved = NULL AND labels = MSS".to_owned(),
-    ])
+impl fmt::Display for Site {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            &Site::Mss => write!(f, "mss"),
+            &Site::Jpc => write!(f, "jpc"),
+        }
+    }
 }
 
-pub fn created_prior_month_one() -> Report {
-    Report(vec![
-        "jql=project = WEBOPS AND issuetype = Story AND priority = High AND created >= startOfMonth(-1) AND created <= endOfMonth(-1) AND resolved = NULL AND labels = JPC".to_owned(),
-        "jql=project = WEBOPS AND issuetype = Story AND priority = High AND created >= startOfMonth(-1) AND created <= endOfMonth(-1) AND resolved = NULL AND labels = MSS".to_owned(),
-        "jql=project = WEBOPS AND issuetype = Story AND priority = Medium AND created >= startOfMonth(-1) AND created <= endOfMonth(-1) AND resolved = NULL AND labels = JPC".to_owned(),
-        "jql=project = WEBOPS AND issuetype = Story AND priority = Medium AND created >= startOfMonth(-1) AND created <= endOfMonth(-1) AND resolved = NULL AND labels = MSS".to_owned(),
-        "jql=project = WEBOPS AND issuetype = Story AND priority = Low AND created >= startOfMonth(-1) AND created <= endOfMonth(-1) AND resolved = NULL AND labels = JPC".to_owned(),
-        "jql=project = WEBOPS AND issuetype = Story AND priority = Low AND created >= startOfMonth(-1) AND created <= endOfMonth(-1) AND resolved = NULL AND labels = MSS".to_owned(),
-    ])
+pub fn existing(month: i32) -> Report {
+    Report(PRIORITIES.iter().flat_map(|&priority|
+        SITES.iter().map(move |&site| format_existing_story_query(month, priority, site))
+    ).collect())
 }
 
-pub fn created_prior_month_two() -> Report {
-    Report(vec![
-        "jql=project = WEBOPS AND issuetype = Story AND priority = High AND created >= startOfMonth(-2) AND created <= endOfMonth(-2) AND resolved = NULL AND labels = JPC".to_owned(),
-        "jql=project = WEBOPS AND issuetype = Story AND priority = High AND created >= startOfMonth(-2) AND created <= endOfMonth(-2) AND resolved = NULL AND labels = MSS".to_owned(),
-        "jql=project = WEBOPS AND issuetype = Story AND priority = Medium AND created >= startOfMonth(-2) AND created <= endOfMonth(-2) AND resolved = NULL AND labels = JPC".to_owned(),
-        "jql=project = WEBOPS AND issuetype = Story AND priority = Medium AND created >= startOfMonth(-2) AND created <= endOfMonth(-2) AND resolved = NULL AND labels = MSS".to_owned(),
-        "jql=project = WEBOPS AND issuetype = Story AND priority = Low AND created >= startOfMonth(-2) AND created <= endOfMonth(-2) AND resolved = NULL AND labels = JPC".to_owned(),
-        "jql=project = WEBOPS AND issuetype = Story AND priority = Low AND created >= startOfMonth(-2) AND created <= endOfMonth(-2) AND resolved = NULL AND labels = MSS".to_owned(),
-    ])
+fn format_existing_story_query(month: i32, priority: Priority, label: Site) -> String {
+    format!("jql=project=webops and issuetype=story and created <= startofmonth({month}) and priority={priority} and (resolved >= startofmonth({month}) or resolved = null) and labels = {label}",
+        month = 0 - month,
+        priority = priority,
+        label = label
+    )
 }
 
-// Closed in month
-
-pub fn closed_current_month() -> Report {
-    Report(vec![
-        "jql=project = WEBOPS AND issuetype = Story AND priority = High AND resolved >= startOfMonth() AND resolved <= endOfMonth() AND  labels = JPC".to_owned(),
-        "jql=project = WEBOPS AND issuetype = Story AND priority = High AND resolved >= startOfMonth() AND resolved <= endOfMonth() AND  labels = MSS".to_owned(),
-        "jql=project = WEBOPS AND issuetype = Story AND priority = Medium AND resolved >= startOfMonth() AND resolved <= endOfMonth() AND  labels = JPC".to_owned(),
-        "jql=project = WEBOPS AND issuetype = Story AND priority = Medium AND resolved >= startOfMonth() AND resolved <= endOfMonth() AND  labels = MSS".to_owned(),
-        "jql=project = WEBOPS AND issuetype = Story AND priority = Low AND resolved >= startOfMonth() AND resolved <= endOfMonth() AND  labels = JPC".to_owned(),
-        "jql=project = WEBOPS AND issuetype = Story AND priority = Low AND resolved >= startOfMonth() AND resolved <= endOfMonth() AND  labels = MSS".to_owned(),
-    ])
+pub fn created(month: i32) -> Report {
+    Report(PRIORITIES.iter().flat_map(|&priority|
+        SITES.iter().map(move |&site| format_created_story_query(month, priority, site))
+    ).collect())
 }
 
-pub fn closed_prior_month_one() -> Report {
-    Report(vec![
-        "jql=project = WEBOPS AND issuetype = Story AND priority = High AND resolved >= startOfMonth(-1) AND resolved <= endOfMonth(-1) AND  labels = JPC".to_owned(),
-        "jql=project = WEBOPS AND issuetype = Story AND priority = High AND resolved >= startOfMonth(-1) AND resolved <= endOfMonth(-1) AND  labels = MSS".to_owned(),
-        "jql=project = WEBOPS AND issuetype = Story AND priority = Medium AND resolved >= startOfMonth(-1) AND resolved <= endOfMonth(-1) AND  labels = JPC".to_owned(),
-        "jql=project = WEBOPS AND issuetype = Story AND priority = Medium AND resolved >= startOfMonth(-1) AND resolved <= endOfMonth(-1) AND  labels = MSS".to_owned(),
-        "jql=project = WEBOPS AND issuetype = Story AND priority = Low AND resolved >= startOfMonth(-1) AND resolved <= endOfMonth(-1) AND  labels = JPC".to_owned(),
-        "jql=project = WEBOPS AND issuetype = Story AND priority = Low AND resolved >= startOfMonth(-1) AND resolved <= endOfMonth(-1) AND  labels = MSS".to_owned(),
-    ])
+fn format_created_story_query(month: i32, priority: Priority, label: Site) -> String {
+    format!("jql=project = WEBOPS AND issuetype = Story AND priority = {priority} AND created >= startOfMonth({month}) AND created <= endOfMonth({month}) AND resolved = NULL AND labels = {label}",
+        month = 0 - month,
+        priority = priority,
+        label = label
+    )
 }
 
-pub fn closed_prior_month_two() -> Report {
-    Report(vec![
-        "jql=project = WEBOPS AND issuetype = Story AND priority = High AND resolved >= startOfMonth(-2) AND resolved <= endOfMonth(-2) AND  labels = JPC".to_owned(),
-        "jql=project = WEBOPS AND issuetype = Story AND priority = High AND resolved >= startOfMonth(-2) AND resolved <= endOfMonth(-2) AND  labels = MSS".to_owned(),
-        "jql=project = WEBOPS AND issuetype = Story AND priority = Medium AND resolved >= startOfMonth(-2) AND resolved <= endOfMonth(-2) AND  labels = JPC".to_owned(),
-        "jql=project = WEBOPS AND issuetype = Story AND priority = Medium AND resolved >= startOfMonth(-2) AND resolved <= endOfMonth(-2) AND  labels = MSS".to_owned(),
-        "jql=project = WEBOPS AND issuetype = Story AND priority = Low AND resolved >= startOfMonth(-2) AND resolved <= endOfMonth(-2) AND  labels = JPC".to_owned(),
-        "jql=project = WEBOPS AND issuetype = Story AND priority = Low AND resolved >= startOfMonth(-2) AND resolved <= endOfMonth(-2) AND  labels = MSS".to_owned(),
-    ])
+pub fn closed(month: i32) -> Report {
+    Report(PRIORITIES.iter().flat_map(|&priority|
+        SITES.iter().map(move |&site| format_closed_story_query(month, priority, site))
+    ).collect())
+}
+
+fn format_closed_story_query(month: i32, priority: Priority, label: Site) -> String {
+    format!("jql=project = WEBOPS AND issuetype = Story AND priority = {priority} AND resolved >= startOfMonth({month}) AND resolved <= endOfMonth({month}) AND  labels = {label}",
+        month = 0 - month,
+        priority = priority,
+        label = label
+    )
 }
 
 // Closing balances
-
-pub fn closing_balance_current_month() -> Report {
-    Report(vec![
-        "jql=project = WEBOPS AND issuetype = Story AND priority = High AND resolved = NULL AND labels = JPC".to_owned(),
-        "jql=project = WEBOPS AND issuetype = Story AND priority = High AND resolved = NULL AND labels = MSS".to_owned(),
-        "jql=project = WEBOPS AND issuetype = Story AND priority = Medium AND resolved = NULL AND labels = JPC".to_owned(),
-        "jql=project = WEBOPS AND issuetype = Story AND priority = Medium AND resolved = NULL AND labels = MSS".to_owned(),
-        "jql=project = WEBOPS AND issuetype = Story AND priority = Low AND resolved = NULL AND labels = JPC".to_owned(),
-        "jql=project = WEBOPS AND issuetype = Story AND priority = Low AND resolved = NULL AND labels = MSS".to_owned(),
-    ])
+pub fn remaining(month: i32) -> Report {
+    Report(PRIORITIES.iter().flat_map(|&priority|
+        SITES.iter().map(move |&site| format_remaining_story_query(month, priority, site))
+    ).collect())
 }
 
-pub fn closing_balance_prior_month_one() -> Report {
-    Report(vec![
-        "jql=project=webops and issuetype=story and created <= endofmonth(-1) and priority=high and (resolved = null or resolved >= endofmonth(-1)) and labels = jpc".to_owned(),
-        "jql=project=webops and issuetype=story and created <= endofmonth(-1) and priority=high and (resolved = null or resolved >= endofmonth(-1)) and labels = mss".to_owned(),
-        "jql=project=webops and issuetype=story and created <= endofmonth(-1) and priority=medium and (resolved = null or resolved >= endofmonth(-1)) and labels = jpc".to_owned(),
-        "jql=project=webops and issuetype=story and created <= endofmonth(-1) and priority=medium and (resolved = null or resolved >= endofmonth(-1)) and labels = mss".to_owned(),
-        "jql=project=webops and issuetype=story and created <= endofmonth(-1) and priority=low and (resolved = null or resolved >= endofmonth(-1)) and labels = jpc".to_owned(),
-        "jql=project=webops and issuetype=story and created <= endofmonth(-1) and priority=low and (resolved = null or resolved >= endofmonth(-1)) and labels = mss".to_owned(),
-    ])
-}
-
-pub fn closing_balance_prior_month_two() -> Report {
-    Report(vec![
-        "jql=project=webops and issuetype=story and created <= endofmonth(-2) and priority=high and (resolved = null or resolved >= endofmonth(-2)) and labels = jpc".to_owned(),
-        "jql=project=webops and issuetype=story and created <= endofmonth(-2) and priority=high and (resolved = null or resolved >= endofmonth(-2)) and labels = mss".to_owned(),
-        "jql=project=webops and issuetype=story and created <= endofmonth(-2) and priority=medium and (resolved = null or resolved >= endofmonth(-2)) and labels = jpc".to_owned(),
-        "jql=project=webops and issuetype=story and created <= endofmonth(-2) and priority=medium and (resolved = null or resolved >= endofmonth(-2)) and labels = mss".to_owned(),
-        "jql=project=webops and issuetype=story and created <= endofmonth(-2) and priority=low and (resolved = null or resolved >= endofmonth(-2)) and labels = jpc".to_owned(),
-        "jql=project=webops and issuetype=story and created <= endofmonth(-2) and priority=low and (resolved = null or resolved >= endofmonth(-2)) and labels = mss".to_owned(),
-    ])
+fn format_remaining_story_query(month: i32, priority: Priority, label: Site) -> String {
+    format!("jql=project=webops and issuetype=story and created <= endofmonth({month}) and priority={priority} and (resolved = null or resolved >= endofmonth({month})) and labels = {label}",
+        month = 0 - month,
+        priority = priority,
+        label = label
+    )
 }
