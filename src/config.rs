@@ -29,6 +29,7 @@ pub struct Config {
     username: String,
     password: Option<String>,
     report: Option<String>,
+    params: Option<String>,
 }
 
 impl Config {
@@ -43,15 +44,19 @@ impl Config {
     pub fn report(&self) -> String {
         self.report.clone().unwrap()
     }
+
+    pub fn params(&self) -> Option<String> {
+        self.params.clone()
+    }
 }
 
-pub fn read_config(command: &Command) -> Result<Config, ConfigError> {
+pub fn read_config(command: Command) -> Result<Config, ConfigError> {
     let path = config_path();
     let content = try!(File::open(&path).map_err(|_| ConfigError::not_found(&path)).map(to_string));
     let toml = try!(Parser::new(&content).parse().ok_or(ConfigError::invalid(content.clone())));
 
     toml::decode::<Config>(toml["config"].clone()).ok_or(ConfigError::invalid(content.clone()))
-        .map(|mut config| {
+        .map(move |mut config| {
             // Add password from stdin if possible -- avoids asking user for it
             if command.with_password {
                 let handle = io::stdin();
@@ -59,13 +64,11 @@ pub fn read_config(command: &Command) -> Result<Config, ConfigError> {
                 let mut buffer = String::new();
 
                 reader.read_line(&mut buffer).ok();
-
                 config.password = Some(buffer.trim().to_owned());
             }
 
-            // Add reports
             config.report = Some(command.report.to_owned());
-
+            config.params = command.params;
             config
         })
 }

@@ -1,37 +1,34 @@
+// These features mean that this code is no longer buildable on anything other than nightly. I
+// don't personally see this as a big deal because I don't use anything else, but on the up side we
+// could salvage this by implementing the `Deserialize` trait by hand. So far, the struct has only
+// one field, and that wouldn't be a big deal. It's just faster this way because I've never done it
+// the other way. Except, you know... the dependency on `aster` takes around a month to compile.
+#![feature(custom_attribute, custom_derive, plugin)]
+#![plugin(serde_macros)]
+
 extern crate clap;
 extern crate hyper;
+extern crate regex;
 extern crate rpassword;
 extern crate rustc_serialize;
+extern crate serde_json;
+extern crate serde;
 extern crate toml;
 
 use hyper::Client;
-use hyper::status::StatusCode;
 use hyper::header::{ Authorization, Basic };
 
 mod command;
 mod config;
+mod json;
 mod reports;
 
+use json::StorySummary;
 use reports::Report;
 
-struct JsonResponse(StatusCode, String);
-
-impl JsonResponse {
-    fn status(&self) -> StatusCode {
-        self.0
-    }
-
-    fn body(&self) -> &str {
-        &self.1
-    }
-}
-
 fn main() {
-    let config = match config::read_config(&command::read_command()) {
-        Err(e) => {
-            println!("{:?}", e);
-            std::process::exit(1);
-        },
+    let config = match config::read_config(command::read_command()) {
+        Err(e) => panic!("bad config: {:?}", e),
         Ok(config) => config,
     };
 
@@ -42,19 +39,34 @@ fn main() {
     });
 
     match &config.report()[..] {
-        "stories" => {
-            story_print_opening_balances(&client, &header);
-            story_print_stories_added(&client, &header);
-            story_print_stories_completed(&client, &header);
-            story_print_closing_balance(&client, &header);
+        // All this should be handled by clap subcommands
+        "existing" => match config.params().and_then(|p| p.parse().ok()) {
+            None => panic!("valid month param not provided"),
+            Some(month) => print_report(&client, &header, reports::existing(month)),
         },
-        "bugs" => {
-            bug_print_opening_balances(&client, &header);
-            bug_print_bugs_added(&client, &header);
-            bug_print_bugs_completed(&client, &header);
-            bug_print_closing_balance(&client, &header);
-        }
+        "created" => match config.params().and_then(|p| p.parse().ok()) {
+            None => panic!("valid month param not provided"),
+            Some(month) => print_report(&client, &header, reports::created(month)),
+        },
+        "closed" => match config.params().and_then(|p| p.parse().ok()) {
+            None => panic!("valid month param not provided"),
+            Some(month) => print_report(&client, &header, reports::closed(month))
+        },
+        "remaining" => match config.params().and_then(|p| p.parse().ok()) {
+            None => panic!("valid month param not provided"),
+            Some(month) => print_report(&client, &header, reports::remaining(month))
+        },
         _ => println!("unknown report"),
+    }
+}
+
+fn print_report(client: &Client, auth: &Authorization<Basic>, report: Report) {
+    let report = report.run(client, auth);
+
+    for row in report.chunks(2) {
+        println!("{},{}",
+            row[0].to::<StorySummary>().unwrap().total(),
+            row[1].to::<StorySummary>().unwrap().total());
     }
 }
 
@@ -64,65 +76,23 @@ fn get_password() -> String {
     rpassword::read_password().unwrap()
 }
 
-fn story_print_opening_balances(client: &Client, auth: &Authorization<Basic>) {
-    println!("Opening balances: ");
-    print_report("Current Month", &reports::stories::opening_balance_current_month(), client, auth);
-    print_report("Prior One", &reports::stories::opening_balance_prior_month_one(), client, auth);
-    print_report("Prior Two", &reports::stories::opening_balance_prior_month_two(), client, auth);
-}
+#[cfg(test)]
+mod tests {
+    use hyper::status::StatusCode;
+    use json::{ JsonResponse, StorySummary};
+    use serde_json;
 
-fn story_print_stories_added(client: &Client, auth: &Authorization<Basic>) {
-    println!("Stories added: ");
-    print_report("Current Month", &reports::stories::created_current_month(), client, auth);
-    print_report("Prior One", &reports::stories::created_prior_month_one(), client, auth);
-    print_report("Prior Two", &reports::stories::created_prior_month_two(), client, auth);
-}
+    const JSON_CONTENT: &'static str = r#"{"startAt":0,"maxResults":0,"total":0,"issues":[]}"#;
 
-fn story_print_stories_completed(client: &Client, auth: &Authorization<Basic>) {
-    println!("Stories completed: ");
-    print_report("Current Month", &reports::stories::closed_current_month(), client, auth);
-    print_report("Prior One", &reports::stories::closed_prior_month_one(), client, auth);
-    print_report("Prior Two", &reports::stories::closed_prior_month_two(), client, auth);
-}
+    #[test]
+    fn can_deserialize() {
+        assert!(0 == serde_json::from_str::<StorySummary>(JSON_CONTENT).unwrap().total());
+    }
 
-fn story_print_closing_balance(client: &Client, auth: &Authorization<Basic>) {
-    println!("Closing balances: ");
-    print_report("Current Month", &reports::stories::closing_balance_current_month(), client, auth);
-    print_report("Prior One", &reports::stories::closing_balance_prior_month_one(), client, auth);
-    print_report("Prior Two", &reports::stories::closing_balance_prior_month_two(), client, auth);
-}
+    #[test]
+    fn can_deserialize_JsonResponse() {
+        let json_response = JsonResponse::new(StatusCode::Ok, JSON_CONTENT.to_owned());
 
-fn bug_print_opening_balances(client: &Client, auth: &Authorization<Basic>) {
-    println!("Opening balances: ");
-    print_report("Current Month", &reports::bugs::opening_balance_current_month(), client, auth);
-    print_report("Prior One", &reports::bugs::opening_balance_prior_month_one(), client, auth);
-    print_report("Prior Two", &reports::bugs::opening_balance_prior_month_two(), client, auth);
-}
-
-fn bug_print_bugs_added(client: &Client, auth: &Authorization<Basic>) {
-    println!("bugs added: ");
-    print_report("Current Month", &reports::bugs::created_current_month(), client, auth);
-    print_report("Prior One", &reports::bugs::created_prior_month_one(), client, auth);
-    print_report("Prior Two", &reports::bugs::created_prior_month_two(), client, auth);
-}
-
-fn bug_print_bugs_completed(client: &Client, auth: &Authorization<Basic>) {
-    println!("bugs completed: ");
-    print_report("Current Month", &reports::bugs::closed_current_month(), client, auth);
-    print_report("Prior One", &reports::bugs::closed_prior_month_one(), client, auth);
-    print_report("Prior Two", &reports::bugs::closed_prior_month_two(), client, auth);
-}
-
-fn bug_print_closing_balance(client: &Client, auth: &Authorization<Basic>) {
-    println!("Closing balances: ");
-    print_report("Current Month", &reports::bugs::closing_balance_current_month(), client, auth);
-    print_report("Prior One", &reports::bugs::closing_balance_prior_month_one(), client, auth);
-    print_report("Prior Two", &reports::bugs::closing_balance_prior_month_two(), client, auth);
-}
-
-fn print_report(message: &str, report: &Report, client: &Client, auth: &Authorization<Basic>) {
-    println!("{}", message);
-    for result in &report.run(client, auth) {
-        println!("{:?}: {}", result.status(), result.body());
+        assert!(0 == json_response.to::<StorySummary>().unwrap().total());
     }
 }
