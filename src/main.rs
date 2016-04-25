@@ -1,8 +1,3 @@
-// These features mean that this code is no longer buildable on anything other than nightly. I
-// don't personally see this as a big deal because I don't use anything else, but on the up side we
-// could salvage this by implementing the `Deserialize` trait by hand. So far, the struct has only
-// one field, and that wouldn't be a big deal. It's just faster this way because I've never done it
-// the other way. Except, you know... the dependency on `aster` takes around a month to compile.
 #![feature(custom_attribute, custom_derive, plugin)]
 #![plugin(serde_macros)]
 
@@ -39,23 +34,26 @@ fn main() {
     });
 
     match &config.report()[..] {
-        // All this should be handled by clap subcommands
         "existing" => match config.params().and_then(|p| p.parse().ok()) {
             None => panic!("valid month param not provided"),
             Some(month) => print_report(&client, &header, reports::existing(month)),
         },
+
         "created" => match config.params().and_then(|p| p.parse().ok()) {
             None => panic!("valid month param not provided"),
             Some(month) => print_report(&client, &header, reports::created(month)),
         },
+
         "closed" => match config.params().and_then(|p| p.parse().ok()) {
             None => panic!("valid month param not provided"),
             Some(month) => print_report(&client, &header, reports::closed(month))
         },
+
         "remaining" => match config.params().and_then(|p| p.parse().ok()) {
             None => panic!("valid month param not provided"),
             Some(month) => print_report(&client, &header, reports::remaining(month))
         },
+
         _ => println!("unknown report"),
     }
 }
